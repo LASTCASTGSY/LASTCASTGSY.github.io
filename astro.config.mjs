@@ -1,11 +1,13 @@
-// @ts-check
-
-import mdx from '@astrojs/mdx';
-import sitemap from '@astrojs/sitemap';
 import { defineConfig } from 'astro/config';
 
-// https://astro.build/config
+// Replace 'your-repo-name' with your actual GitHub repo name
+// If deploying to https://username.github.io (user/org site), remove the base option
 export default defineConfig({
-	site: 'https://example.com',
-	integrations: [mdx(), sitemap()],
+  site: 'https://your-username.github.io',
+  base: '/your-repo-name',
+  markdown: {
+    shikiConfig: {
+      theme: 'github-dark',
+    },
+  },
 });
