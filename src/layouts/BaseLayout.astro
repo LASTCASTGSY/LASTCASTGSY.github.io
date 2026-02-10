@@ -1,0 +1,20 @@
+---
+const { title } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} | Siyu Gan</title>
+</head>
+<body style="font-family: sans-serif; line-height: 1.6; padding: 2rem; max-width: 800px; margin: auto;">
+    <nav style="margin-bottom: 2rem;">
+        <a href="/" style="margin-right: 1rem;">Home</a>
+        <a href="/about">About</a>
+    </nav>
+    <main>
+        <slot />
+    </main>
+</body>
+</html>
