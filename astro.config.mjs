@@ -2,5 +2,9 @@ import { defineConfig } from 'astro/config';
 
 export default defineConfig({
   site: 'https://lastcastgsy.github.io',
-  base: '/',
+  markdown: {
+    shikiConfig: {
+      theme: 'github-dark',
+    },
+  },
 });
