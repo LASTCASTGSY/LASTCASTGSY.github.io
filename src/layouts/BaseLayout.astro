@@ -10,7 +10,7 @@ const base = import.meta.env.BASE_URL;
 ---
 
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -18,12 +18,107 @@ const base = import.meta.env.BASE_URL;
   <title>{title} — Siyu Gan (Thrain)</title>
   <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
   <link rel="sitemap" href={`${base}sitemap-index.xml`} />
+
+  <!-- Three.js + Vanta.js CDN -->
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script is:inline src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+
   <style>
     /* Prevent FOUC for dark mode */
-    html[data-theme="dark"] { background: #141413; color: #E8E6E1; }
+    html[data-theme="dark"] { background: #0a192f; color: #E8E6E1; }
+
+    /* ── Vanta background: fixed behind everything ── */
+    #vanta-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    /* ── Glassmorphism for content containers ── */
+    .container,
+    .container--wide {
+      position: relative;
+      z-index: 1;
+    }
+
+    .site-header {
+      background: rgba(10, 25, 47, 0.65) !important;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .card,
+    .research-item {
+      background: rgba(10, 25, 47, 0.55) !important;
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .card:hover {
+      background: rgba(10, 25, 47, 0.7) !important;
+      border-color: rgba(63, 191, 191, 0.3) !important;
+    }
+
+    .prose pre {
+      background: rgba(10, 25, 47, 0.7) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .post-item {
+      border-color: rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .tag {
+      background: rgba(63, 191, 191, 0.12) !important;
+      color: #8ecece !important;
+    }
+
+    .tag-filter {
+      background: rgba(10, 25, 47, 0.5) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .btn--primary {
+      background: rgba(63, 191, 191, 0.9) !important;
+      color: #0a192f !important;
+    }
+
+    .btn--primary:hover {
+      background: rgba(63, 191, 191, 1) !important;
+    }
+
+    .btn--outline {
+      border-color: rgba(255, 255, 255, 0.15) !important;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .site-footer {
+      background: rgba(10, 25, 47, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    /* Make body/main transparent so Vanta shows through */
+    body {
+      background: transparent !important;
+    }
   </style>
 </head>
 <body>
+  <!-- Vanta.js background element -->
+  <div id="vanta-bg"></div>
+
   <header class="site-header">
     <div class="container container--wide">
       <a href={`${base}`} class="site-logo">Siyu Gan</a>
@@ -59,16 +154,35 @@ const base = import.meta.env.BASE_URL;
   </footer>
 
   <script is:inline>
-    // Theme persistence
+    // ── Initialize Vanta.js Ocean ──
     (function() {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
+      if (typeof VANTA !== 'undefined') {
+        VANTA.WAVES({
+          el: '#vanta-bg',
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200.00,
+          minWidth: 200.00,
+          scale: 1.00,
+          scaleMobile: 1.00,
+          color: 0x0a192f,
+          shininess: 50.00,
+          waveHeight: 20.00,
+          waveSpeed: 0.75,
+          zoom: 0.85
+        });
       }
     })();
 
-    // Theme toggle
+    // ── Theme toggle (dark-only with Vanta, but keep toggle functional) ──
+    (function() {
+      // Force dark mode for the ocean aesthetic
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    })();
+
+    // Theme toggle — toggles between ocean-dark and a lighter ocean
     document.getElementById('theme-toggle')?.addEventListener('click', () => {
       const html = document.documentElement;
       const current = html.getAttribute('data-theme');
