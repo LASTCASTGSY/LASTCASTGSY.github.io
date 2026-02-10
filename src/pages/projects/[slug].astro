@@ -1,39 +1,38 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import '../../styles/global.css';
-import { getCollection } from 'astro:content';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
 
+const base = import.meta.env.BASE_URL;
+
+// ? Only generate pages for NON-ongoing projects
 export async function getStaticPaths() {
-  const projects = await getCollection('projects');
-  return projects.map(entry => ({
-    params: { slug: entry.slug },
-    props: { entry },
+  const projects = await getCollection("projects");
+  const published = projects.filter((p) => p.data.status !== "ongoing");
+
+  return published.map((p) => ({
+    params: { slug: p.slug },
+    props: { project: p },
   }));
 }
 
-const { entry } = Astro.props;
-const { Content } = await entry.render();
-const base = import.meta.env.BASE_URL;
+const { project } = Astro.props;
+
+// Extra safety in dev/edge cases
+if (project?.data?.status === "ongoing") {
+  return Astro.redirect(`${base}projects/`);
+}
 ---
 
-<BaseLayout title={entry.data.title} description={entry.data.description} activeNav="projects">
-  <div class="container">
-    <a href={`${base}projects/`} class="back-link">← Back to projects</a>
+<BaseLayout title={project.data.title} activeNav="projects">
+  <section class="section">
+    <div class="container">
+      <h1>{project.data.title}</h1>
 
-    <article class="prose">
-      <header class="article-header">
-        <div class="article-meta">
-          <span class={`card-status card-status--${entry.data.status}`}>{entry.data.status}</span>
-          <span>{entry.data.date}</span>
-        </div>
-        <h1>{entry.data.title}</h1>
-        <p style="font-size: 1.05rem; color: var(--color-text-secondary);">{entry.data.description}</p>
-        <div class="card-tags" style="margin-top: var(--space-md);">
-          {entry.data.tags.map((t: string) => <span class="tag">{t}</span>)}
-        </div>
-      </header>
+      {project.data.description && <p>{project.data.description}</p>}
 
-      <Content />
-    </article>
-  </div>
+      <article class="prose">
+        <Content />
+      </article>
+    </div>
+  </section>
 </BaseLayout>
