@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/global.css';
+---
+
+<BaseLayout title="About" description="About Siyu Gan (Thrain) — mathematics and physics student building diffusion models for time-series forecasting." activeNav="about">
+  <div class="container">
+    <div class="about-content" style="padding-top: var(--space-2xl);">
+      <span class="section-label">About</span>
+      <h1>Siyu Gan <span style="color: var(--color-text-muted); font-weight: 400;">(Thrain)</span></h1>
+
+      <p>
+        I'm a double-major in Mathematics (Data Science option) and Physics at the University of Houston.
+        My work sits at the intersection of probabilistic machine learning and physical science — specifically,
+        I build score-based diffusion models for time-series imputation and forecasting.
+      </p>
+
+      <p>
+        My main project is <strong>WaveCast2</strong>, a codebase for probabilistic ocean wave forecasting
+        using CSDI-style conditional diffusion. The system handles extreme missingness (~80%) in buoy
+        observations, produces calibrated uncertainty estimates, and recently gained multimodal conditioning
+        via cross-attention fusion with ERA5 atmospheric reanalysis data.
+      </p>
+
+      <p>
+        I'm drawn to problems where the underlying dynamics are stochastic and the observations are incomplete —
+        which describes most of the physical world. My mathematical interests include random matrices,
+        high-dimensional probability, and the geometry of score functions in high-dimensional spaces.
+      </p>
+
+      <p>
+        I'm currently looking for <strong>ML internship</strong> roles where I can work on generative models,
+        time-series problems, or AI-for-science applications. I care about clean code, honest evaluation, and
+        building things that work on real data.
+      </p>
+
+      <div class="hero-actions" style="margin-top: var(--space-xl);">
+        <a href="https://github.com/lastcastgsy" target="_blank" rel="noopener" class="btn btn--primary">
+          GitHub ↗
+        </a>
+        <a href="mailto:sgan@uh.edu" class="btn btn--outline">
+          Email me
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
