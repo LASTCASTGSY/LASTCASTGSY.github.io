@@ -63,7 +63,7 @@ const researchFoci = [
         </span>
       </h1>
 
-      <!-- Headshot -->
+      <!-- Headshot (bigger + square) -->
       <img
         src="/images/headshot.jpg"
         alt="Siyu Gan"
@@ -79,6 +79,7 @@ const researchFoci = [
           box-shadow: 0 8px 24px rgba(0,0,0,0.25);
         "
       />
+
       <p class="hero-subtitle">
         I build diffusion models for time-series forecasting and imputation.
         Mathematics &amp; Physics at the University of Houston — interested in
@@ -114,7 +115,6 @@ const researchFoci = [
           const isOngoing = p.status === 'ongoing';
 
           return isOngoing ? (
-            <!-- NOT clickable -->
             <div
               class="card"
               aria-disabled="true"
@@ -130,7 +130,6 @@ const researchFoci = [
               </div>
             </div>
           ) : (
-            <!-- Clickable -->
             <a href={`${base}projects/${p.slug}/`} class="card">
               <span class={`card-status card-status--${p.status}`}>
                 {p.status}
