@@ -1,7 +1,7 @@
 ---
-title: "Multimodal Wave Forecasting"
-description: "Cross-attention fusion of buoy time series and ERA5 atmospheric reanalysis for conditioned probabilistic wave forecasts."
-tags: ["multimodal", "ViT", "cross-attention", "ERA5", "PyTorch"]
+title: "Multimodal Forecasting with ERA5 Spatial Covariates"
+description: "Cross-attention fusion of NDBC buoy time series and ERA5 atmospheric reanalysis grids (u10, v10, msl) for conditioned probabilistic wave forecasts."
+tags: ["multimodal", "ERA5", "cross-attention", "CNN", "PyTorch"]
 status: "ongoing"
 date: "2025 – present"
 featured: true
@@ -10,78 +10,88 @@ order: 3
 
 ## TL;DR
 
-Extending WaveCast2 to condition wave forecasts on gridded atmospheric data (ERA5 reanalysis). A lightweight Vision Transformer encodes ERA5 fields into context tokens, which are injected into the diffusion backbone via cross-attention. Early results suggest that wind and pressure fields significantly improve 48h+ forecasts compared to buoy-only baselines.
+Extending WaveCast2 to condition wave forecasts on **gridded ERA5 atmospheric reanalysis data** — 10m wind components (u10, v10) and mean sea level pressure (msl) on a 0.25° spatial grid centered on the buoy. A 2D CNN spatial encoder compresses each ERA5 snapshot into a context vector, which is fused into the diffusion backbone via **cross-attention**. Early results show that atmospheric spatial context improves forecasts at 48h+ horizons compared to buoy-only baselines.
 
 ## Problem
 
-Buoy-only forecasting is limited by the local observation horizon — a single station cannot capture the upstream atmospheric dynamics that generate swells. Physics-based models solve this by ingesting global wind fields, but at high computational cost. We want to give our diffusion model access to the same upstream information via learned representations of ERA5 grids, without hand-engineering physical relationships.
+Buoy-only forecasting is limited by the local observation horizon — a single station cannot see the upstream atmospheric dynamics that generate swells. Physics-based models solve this by ingesting global wind fields, but at enormous computational cost. We want the diffusion model to learn from the same atmospheric context through cross-attention, without hand-engineering physical relationships.
 
 ## Data
 
-- **Time series**: NDBC buoy Hs, Tp (same as forecasting project)
-- **ERA5 fields**: 10m wind (u, v), mean sea level pressure, on a regional grid (e.g., 10°×10° around the buoy station)
-- **Resolution**: ERA5 at 0.25° spatial, hourly temporal — downsampled to match buoy frequency
-- **Fusion challenge**: Aligning a 1D time series with a 3D spatiotemporal tensor (time × lat × lon × channels)
+**Buoy time series** (same as forecasting project):
+- NDBC station 42001, 9 variables at 10-minute cadence
+- 72h context window (432 steps)
+
+**ERA5 reanalysis grids**:
+- **Variables**: 10m u-wind (u10), 10m v-wind (v10), mean sea level pressure (msl)
+- **Spatial resolution**: 0.25° × 0.25°
+- **Grid window**: 3° × 3° or 5° × 5° centered on buoy location
+- **Temporal resolution**: Hourly (aligned to buoy timestamps)
+- **Temporal constraint (no-cheating rule)**: ERA5 data only from `[t - T_era : t]` — strictly causal, never includes future atmospheric data
+
+```
+For forecast origin t:
+  Context x:   buoy data  [t - T_ctx : t]        (observed)
+  Exogenous:   ERA5 grids [t - T_era : t]        (causal only!)
+  Target y:    future buoy [t+1 : t+H]           (to generate)
+```
 
 ## Method
 
 ### Architecture
 
 ```
-ERA5 grid → [Patch Embed → ViT Encoder → context tokens]
-                                              ↓ (cross-attention)
-Buoy TS → [CSDI Diffusion Backbone ← cross-attn ← ERA5 context] → Forecast
+ERA5 Grid (B, T, C, H, W) → 2D CNN SpatialEncoder → (B, T, D)
+                                                        ↓ (cross-attention)
+Buoy Data → CSDI Diffusion Backbone + CrossAttention → Forecast
 ```
 
-1. **ERA5 encoder**: Lightweight ViT (4 layers, 128-dim, 4 heads) processes each ERA5 snapshot as a set of spatial patches. Temporal snapshots are concatenated along the sequence dimension.
-2. **Cross-attention fusion**: Each ResidualBlock in the CSDI backbone includes a cross-attention layer where time-series features (queries) attend to ERA5 context tokens (keys/values).
-3. **Classifier-Free Guidance (CFG)**: During training, ERA5 conditioning is randomly dropped (p=0.1) so the model learns both conditional and unconditional generation. At inference, guidance weight w scales the ERA5 influence:
+1. **ERA5 spatial encoder**: A 2D CNN processes each ERA5 snapshot (3 channels × H × W) into a D-dimensional vector. Temporal snapshots are stacked along the sequence dimension, producing `(B, T, D)` context tokens.
+2. **Cross-attention fusion**: ResidualBlocks in the CSDI backbone include cross-attention layers where buoy time-series features (queries) attend to ERA5 spatial context (keys/values).
+3. **Strict temporal alignment**: ERA5 context is limited to the causal window `[t - T_era : t]`. This is enforced in `Wave_Dataset_ERA5_Forecasting` class.
 
-```python
-# CFG inference
-noise_uncond = model(x_t, t, era5_context=None)
-noise_cond = model(x_t, t, era5_context=era5_tokens)
-noise_pred = noise_uncond + w * (noise_cond - noise_uncond)
+### Configuration
+
+```yaml
+era5:
+  enabled: true
+  context_hours: 24
+  spatial_window_deg: 3.0
+  # Variables: u10, v10, msl at 0.25° resolution
 ```
 
-### Key design decisions
-
-- **ViT context computed once**: The ERA5 encoder runs once per forward pass. Context tokens are cached and reused across all diffusion steps to avoid O(T × ViT) cost.
-- **No pressure features**: After ablation, we found that removing MSLP and keeping only wind (u, v) improved results. Pressure was redundant with wind information and added noise.
-- **Cross-attention placement**: Added to every other ResidualBlock (not every block) — a tradeoff between expressiveness and memory.
+```bash
+python exe_wave.py --mode forecasting --use_era5 --era5_path ./data/era5 --forecast_horizon 24
+```
 
 ## Results (Preliminary)
 
-| Model | 48h RMSE | 72h RMSE | 48h CRPS |
+| Model | 24h RMSE | 48h RMSE | 72h RMSE |
 |-------|----------|----------|----------|
-| CSDI (buoy only) | 0.46 | 0.58 | 0.27 |
-| CSDI + ERA5 concat | 0.44 | 0.56 | 0.26 |
-| CSDI + ERA5 cross-attn | **0.40** | **0.51** | **0.23** |
-| CSDI + ERA5 cross-attn + CFG (w=1.5) | **0.39** | **0.49** | **0.22** |
+| CSDI (buoy only) | — | — | — |
+| CSDI + ERA5 cross-attn | — | — | — |
 
-> *Preliminary numbers on a single test station. Full multi-station evaluation in progress.*
+> *Results to be filled from ongoing evaluation. ERA5 conditioning expected to show largest gains at longer horizons where upstream atmospheric dynamics matter most.*
 
-<!-- TODO: Add ablation plot — RMSE vs. guidance weight w -->
-<div class="placeholder-img">📊 Figure: RMSE as a function of CFG guidance weight w (coming soon)</div>
+<!-- TODO: Add comparison plot — buoy-only vs ERA5-conditioned forecasts -->
+<div class="placeholder-img">📊 Figure: 48h forecast comparison — buoy-only vs. ERA5-conditioned (coming soon)</div>
 
-<!-- TODO: Add attention map visualization — which ERA5 patches does the model attend to? -->
-<div class="placeholder-img">🗺️ Figure: Cross-attention heatmap over ERA5 grid (coming soon)</div>
+<!-- TODO: Add cross-attention heatmap over ERA5 grid -->
+<div class="placeholder-img">🗺️ Figure: Cross-attention weights over ERA5 spatial grid — which atmospheric regions does the model attend to? (coming soon)</div>
 
 ## Debugging Notes
 
-- **Model ignoring ERA5**: The first integration attempt used simple concatenation of ERA5 features with the time-series embedding. The model learned to ignore ERA5 entirely (ablation showed no difference). Cross-attention fixed this by forcing explicit queries over ERA5 context.
-- **Double normalization (again)**: ERA5 data was being normalized in both the data pipeline and inside the ViT encoder. Manifested as flat, uninformative context tokens.
-- **Memory scaling**: With cross-attention at every block, training OOM'd on 24GB GPUs for sequences > 336 steps. Reduced to every-other-block and added gradient checkpointing.
+- **Model ignoring ERA5**: The first attempt used simple concatenation of ERA5 features with the time-series embedding. The model learned to ignore ERA5 entirely (ablation showed zero difference). Cross-attention with a dedicated spatial encoder fixed this by creating an explicit query-key-value pathway.
+- **Double normalization (again)**: ERA5 data was being normalized in both the data pipeline and inside the CNN encoder. This produced flat, uninformative context tokens.
+- **Memory scaling**: With cross-attention at every residual block, training OOM'd on 24GB GPUs for longer sequences. Reduced to every-other-block placement and added gradient checkpointing.
+- **Pressure variable**: After ablation, removing MSLP and keeping only wind (u10, v10) improved results. Wind encodes most of the useful atmospheric signal; pressure was redundant and added noise.
 
-## Next Steps
+## Future Directions
 
-- Full multi-station evaluation (10+ NDBC stations, diverse wave climates)
-- Ablation study on ViT depth, patch size, and number of ERA5 variables
-- Compare with MicroClimaX-style architectures
-- Investigate temporal attention over ERA5 (current approach flattens time into sequence)
+From the poster presentation: the next step is to **integrate buoy camera imagery using a Vision Transformer (ViT)** as an additional conditioning stream, enabling the model to combine visual and sensor data. We also plan to introduce transformer-based temporal encoders to better capture long-range dependencies and support real-time forecasting.
 
 ## Links
 
+- [WaveCast2 codebase](https://github.com/LASTCASTGSY/wave_cast2)
 - [ERA5 dataset (Copernicus CDS)](https://cds.climate.copernicus.eu/)
-- [MCD-TSF paper (Multimodal Conditional Diffusion)](https://arxiv.org/abs/) *(link TBD)*
-- [WaveCast2 codebase](https://github.com/lastcastgsy/wavecast2) *(update link)*
+- [CSDI paper (Tashiro et al., NeurIPS 2021)](https://arxiv.org/abs/2107.03502)

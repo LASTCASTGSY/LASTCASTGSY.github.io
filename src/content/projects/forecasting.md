@@ -1,6 +1,6 @@
 ---
-title: "Multi-step Wave Forecasting"
-description: "Autoregressive diffusion-based forecasting for multi-horizon wave height prediction from NDBC buoy observations."
+title: "Multi-Horizon Wave Forecasting"
+description: "Conditional diffusion model for probabilistic wave height forecasting at 6h/24h/48h/72h horizons using NDBC buoy data at 10-minute resolution."
 tags: ["forecasting", "time-series", "CSDI", "PyTorch"]
 status: "completed"
 date: "2024 – 2025"
@@ -10,68 +10,95 @@ order: 2
 
 ## TL;DR
 
-Extended the CSDI imputation framework to multi-step forecasting: given a context window of observed wave heights, the model generates probabilistic forecasts for the next 24–72 hours. The key insight is framing forecasting as "imputation of future values" — the future window is treated as missing data conditioned on the past.
+Extended the CSDI imputation framework to multi-horizon forecasting: given a 72-hour context window of buoy observations, the model generates probabilistic forecasts at 6h, 24h, 48h, and 72h horizons (36 to 432 time steps at 10-minute cadence). Forecasting is framed as "imputation of future values" — the future window is treated as missing data conditioned on the observed past.
 
 ## Problem
 
-Wave height forecasting is critical for maritime operations, coastal engineering, and offshore energy. Physics-based models (WaveWatch III, SWAN) are computationally expensive and require atmospheric forcing inputs. Statistical models (ARIMA, Prophet) miss nonlinear dynamics. We want a data-driven probabilistic model that produces sharp, well-calibrated multi-horizon forecasts directly from buoy observations.
+Wave height forecasting is critical for maritime navigation, offshore safety, and recreational fishing. Physics-based models (WaveWatch III, SWAN) are computationally expensive and require full atmospheric forcing. Statistical models (ARIMA, Kalman filters) struggle with the nonlinear, oscillatory, and non-stationary dynamics of ocean waves. We want a data-driven model that produces sharp, calibrated probabilistic forecasts directly from buoy observations — including honest uncertainty estimates for operational decision-making.
 
 ## Data
 
-- **Source**: NDBC stations along the US coastline, hourly Hs
-- **Context window**: 168 hours (7 days) of past observations
-- **Forecast horizon**: 24h, 48h, 72h
-- **Split**: Train on 2010–2021, validate on 2022, test on 2023
-- **Challenges**: Non-stationarity (seasonal cycles), heavy-tailed wave events, varying station coverage
+- **Source**: NDBC station 42001 (mid-Gulf of Mexico)
+- **Frequency**: ~10-minute intervals (NDBC1 dataset type)
+- **Features**: 9 variables — WVHT, WSPD, WDIR, DPD, APD, MWD, PRES, ATMP, DEWP
+- **Context window**: 72 hours = 432 time steps
+- **Forecast horizons** (at 10-minute cadence):
+  - 6h → 36 steps
+  - 24h → 144 steps
+  - 48h → 288 steps
+  - 72h → 432 steps
+- **Temporal split** (deterministic, strict chronological):
+  - Train: through December 31, 2022
+  - Validation: January 1 – December 31, 2023
+  - Test: January 1, 2024 – present
 
 ## Method
 
-The forecasting setup re-uses the CSDI score network but changes the masking strategy:
+The forecasting mode re-uses the CSDI score network but changes the masking strategy. Instead of randomly masking individual timesteps, the mask has a deterministic block structure:
 
-1. **Context**: The past 168 hours are always observed (conditioning)
-2. **Target**: The next H hours are fully masked (to be generated)
-3. **Training**: Random masking on historical windows; at inference, the mask is deterministic (past = observed, future = missing)
-4. **Sampling**: Draw N=50 samples from the reverse diffusion process to form a predictive distribution
+1. **Context** (observed): The past 432 steps are always unmasked
+2. **Target** (to generate): The next H steps are fully masked
+3. **Multi-feature conditioning**: All 9 buoy variables in the context window serve as conditioning; the model generates the full feature vector for future steps
+4. **Sampling**: Draw N samples from the reverse diffusion process to form a predictive distribution
 
 ```python
-# Forecasting mask construction
-def make_forecast_mask(seq_len, context_len, forecast_len):
-    mask = torch.ones(seq_len, dtype=torch.bool)
-    mask[context_len:context_len + forecast_len] = False
-    return mask  # True = observed (context), False = to predict
+# Forecasting mask — past is observed, future is missing
+# At forecast origin t:
+#   Context: buoy data [t - 432 : t]       (observed)
+#   Target:  future    [t+1 : t+H]         (to generate)
+python exe_wave.py --mode forecasting --forecast_horizon 24 --station 42001
 ```
 
-### The t₀ ramp bug
+### Multi-horizon evaluation
 
-Early models produced forecasts that started with a sharp discontinuity at the context–forecast boundary. The first predicted timestep would jump to the unconditional mean before recovering. Root cause: the model was trained with random masks that rarely placed a missing value immediately after a long observed block. At inference, the deterministic boundary was out-of-distribution.
+The pipeline supports running all four horizons sequentially via `--mode forecasting_multi`, or a full "golden run" that produces model checkpoints, config snapshots, and high-resolution forecast visualizations:
 
-**Fix**: During training, include a mix of block-missing patterns that simulate the forecast boundary, not just random scattered masks.
+```bash
+python exe_wave.py --mode golden_run --station 42001
+```
+
+### Architecture details
+
+- 4 residual layers, 64 channels, 8 attention heads
+- 50 diffusion steps
+- Training: 200 epochs, batch size 16, learning rate 0.001
 
 ## Results
 
-| Horizon | Persistence | LSTM | CSDI (ours) |
-|---------|------------|------|-------------|
-| 24h RMSE | 0.45 | 0.38 | **0.31** |
-| 48h RMSE | 0.72 | 0.55 | **0.46** |
-| 72h RMSE | 0.91 | 0.69 | **0.58** |
-| 24h CRPS | — | — | **0.18** |
+| Metric | 6h | 24h | 48h | 72h |
+|--------|-----|------|------|------|
+| RMSE | — | — | — | — |
+| MAE | — | — | — | — |
+| CRPS | — | — | — | — |
+| 90% Coverage | — | — | — | — |
 
-<!-- TODO: Add forecast fan chart — median + quantiles -->
-<div class="placeholder-img">📈 Figure: 72h forecast fan chart with 10/50/90 quantiles (coming soon)</div>
+> *Results table to be filled from golden run outputs. Each cell reports metrics on un-normalized WVHT.*
+
+### Visualization
+
+Forecast plots from `vis_wave.py` include:
+- **Red points**: Observed context data
+- **Blue crosses**: Ground truth targets
+- **Green line**: Median prediction (50th percentile)
+- **Shaded green**: 90% prediction interval (5th–95th percentile)
+- **Gray dashed**: Context/horizon boundary
+
+<!-- TODO: Add forecast fan chart from golden run -->
+<div class="placeholder-img">📈 Figure: 24h forecast — context (red), truth (blue), median prediction (green), 90% interval (shaded) (coming soon)</div>
 
 ## Debugging Notes
 
-- **t₀ discontinuity**: See section above. This was the single hardest bug — it looked like the model was "resetting" at the forecast boundary. Took two weeks of investigation. See blog post: *Debugging a sudden drop at forecast start*.
-- **Normalization scope**: Must normalize over the context window only, then apply the same statistics to the forecast window. Global normalization leaks future information.
-- **Number of diffusion steps at inference**: 50 steps give near-identical CRPS to 200 steps but run 4× faster.
+- **Temporal split leakage (V1 → V2)**: V1 used ratio-based random splitting, which leaked future data into training. V2 introduced strict chronological boundaries — this is the single most important change between versions.
+- **t₀ boundary discontinuity**: The model initially produced a sharp drop at the context-forecast boundary because training used random scattered masks that never exhibited a clean block boundary. Fixed by ensuring the forecasting masking strategy is used during training (not just inference).
+- **Normalization scope**: Statistics must be computed on the training set only, then applied to validation and test. Per-window normalization was leaking information.
 
 ## Next Steps
 
-- Extend to joint (Hs, Tp, direction) forecasting
-- Compare with TimeGrad and TSDiff baselines
-- Investigate learned noise schedules for sharper tails
+- Compare with transformer baselines (Informer, PatchTST)
+- Investigate performance on stations with different wave climates
+- Test sensitivity to context window length
 
 ## Links
 
-- [WaveCast2 codebase](https://github.com/lastcastgsy/wavecast2) *(update link)*
-- [NDBC data](https://www.ndbc.noaa.gov/)
+- [WaveCast2 codebase](https://github.com/LASTCASTGSY/wave_cast2)
+- [NDBC station 42001](https://www.ndbc.noaa.gov/station_page.php?station=42001)

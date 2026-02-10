@@ -1,25 +1,108 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/global.css';
+
+const base = import.meta.env.BASE_URL;
+
+const featuredProjects = [
+  {
+    title: 'Diffusion Imputation',
+    description: 'CSDI-based conditional score diffusion for reconstructing ~70% missing wave height from NOAA buoys using multi-feature conditioning.',
+    status: 'completed',
+    tags: ['diffusion', 'PyTorch', 'time-series'],
+    slug: 'diffusion-imputation',
+  },
+  {
+    title: 'Multi-Horizon Forecasting',
+    description: 'Probabilistic wave forecasts at 6h/24h/48h/72h horizons from 10-minute NDBC buoy data with calibrated uncertainty.',
+    status: 'completed',
+    tags: ['forecasting', 'time-series', 'CSDI'],
+    slug: 'forecasting',
+  },
+  {
+    title: 'ERA5 Multimodal Forecasting',
+    description: 'Cross-attention fusion of buoy time series and ERA5 atmospheric grids (u10, v10, msl) via 2D CNN spatial encoder.',
+    status: 'ongoing',
+    tags: ['multimodal', 'ERA5', 'cross-attention'],
+    slug: 'multimodal',
+  },
+];
+
+const researchFoci = [
+  {
+    label: 'Score-based Diffusion',
+    text: 'Score function estimation, denoising score matching, and conditional generation applied to time-series data.',
+  },
+  {
+    label: 'Uncertainty Quantification',
+    text: 'Probabilistic forecasts via diffusion sampling — CRPS, calibration, and reliable prediction intervals.',
+  },
+  {
+    label: 'Evaluation',
+    text: 'Point metrics (RMSE, MAE) alongside distributional metrics (CRPS, coverage) for honest model comparison.',
+  },
+];
 ---
 
 <BaseLayout title="Home" activeNav="home">
+  <!-- Hero -->
   <section class="hero">
-    <div class="container" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem;" style="display: flex; align-items: center; gap: 2.5rem; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 280px;">
-        <span class="hero-label">ML Research | University of Houston</span>
-        <h1>Siyu Gan <span style="color: var(--color-text-muted); font-weight: 400;">(Thrain)</span></h1>
-        <p class="hero-subtitle">
-          I build diffusion models for time-series forecasting and imputation.
-          Mathematics & Physics at the University of Houston — interested in score-based
-          generative methods and AI for science.
-        </p>
-        <div class="hero-actions">
-          <a href="https://github.com/lastcastgsy" target="_blank" class="btn btn--primary">GitHub ↗</a>
-          <a href="mailto:sgan@uh.edu" class="btn btn--outline">Email me</a>
-        </div>
+    <div class="container">
+      <span class="hero-label">ML Intern Candidate</span>
+      <h1>Siyu Gan <span style="color: var(--color-text-muted); font-weight: 400;">(Thrain)</span></h1>
+      <p class="hero-subtitle">
+        I build diffusion models for time-series forecasting and imputation.
+        Mathematics &amp; Physics at the University of Houston — interested in score-based
+        generative methods, uncertainty quantification, and AI for science.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/lastcastgsy" target="_blank" rel="noopener" class="btn btn--primary">
+          GitHub ↗
+        </a>
+        <a href="mailto:sgan@uh.edu" class="btn btn--outline">
+          Email me
+        </a>
       </div>
-      <img style="width: 220px; height: 220px; border-radius: 12px; object-fit: cover; object-position: 20% center; border: 2px solid rgba(255,255,255,0.1);" src="/images/headshot.jpg" alt="Siyu Gan" style="width: 200px; height: 200px; border-radius: 12px; object-fit: cover; border: 2px solid #ccc;" />
+    </div>
+  </section>
+
+  <!-- Featured Projects -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Selected Work</span>
+        <h2>Featured Projects</h2>
+      </div>
+      <div class="card-grid card-grid--three">
+        {featuredProjects.map((p) => (
+          <a href={`${base}projects/${p.slug}/`} class="card">
+            <span class={`card-status card-status--${p.status}`}>{p.status}</span>
+            <h3>{p.title}</h3>
+            <p>{p.description}</p>
+            <div class="card-tags">
+              {p.tags.map((t) => <span class="tag">{t}</span>)}
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Research Focus -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Research Interests</span>
+        <h2>What I Work On</h2>
+      </div>
+      <div class="research-grid">
+        {researchFoci.map((r) => (
+          <div class="research-item">
+            <h4>{r.label}</h4>
+            <p>{r.text}</p>
+          </div>
+        ))}
+      </div>
     </div>
   </section>
 </BaseLayout>
