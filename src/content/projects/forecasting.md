@@ -83,8 +83,9 @@ Forecast plots from `vis_wave.py` include:
 - **Shaded green**: 90% prediction interval (5th–95th percentile)
 - **Gray dashed**: Context/horizon boundary
 
-<!-- TODO: Add forecast fan chart from golden run -->
-<div class="placeholder-img">📈 Figure: 24h forecast — context (red), truth (blue), median prediction (green), 90% interval (shaded) (coming soon)</div>
+![72h Wave Height Forecast Results](/images/forecast-72h.png)
+*Figure: 72-hour WVHT forecast fan chart (median + uncertainty interval) conditioned on recent buoy observations.*
+
 
 ## Debugging Notes
 

@@ -57,8 +57,9 @@ Multi-feature conditioning significantly improved reconstruction quality:
 
 The model produces probabilistic imputations (not just point estimates) by drawing multiple samples from the reverse diffusion process, providing calibrated uncertainty for downstream applications.
 
-<!-- TODO: Add reconstruction visualization -->
-<div class="placeholder-img">📊 Figure: WVHT reconstruction — observed (red), imputed (green median), 90% interval (shaded) (coming soon)</div>
+![WVHT Reconstruction Results](/images/imputation-results.png)
+*Figure: CSDI reconstruction across 9 meteorological variables. Multi-feature conditioning leverages robust auxiliary signals (WSPD, PRES) to accurately impute the 70% missing WVHT data.*
+
 
 ## Debugging Notes
 
