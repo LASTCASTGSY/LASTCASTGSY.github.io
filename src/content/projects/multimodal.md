@@ -84,4 +84,4 @@ noise_pred = noise_uncond + w * (noise_cond - noise_uncond)
 
 - [ERA5 dataset (Copernicus CDS)](https://cds.climate.copernicus.eu/)
 - [MCD-TSF paper (Multimodal Conditional Diffusion)](https://arxiv.org/abs/) *(link TBD)*
-- [WaveCast2 codebase](https://github.com/your-username/wavecast2) *(update link)*
+- [WaveCast2 codebase](https://github.com/lastcastgsy/wavecast2) *(update link)*

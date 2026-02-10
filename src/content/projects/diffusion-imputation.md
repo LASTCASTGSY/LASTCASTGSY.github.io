@@ -74,4 +74,4 @@ def p_sample(model, x_t, t, cond_mask, cond_obs):
 ## Links
 
 - [CSDI paper (Tashiro et al., 2021)](https://arxiv.org/abs/2107.03502)
-- [WaveCast2 codebase](https://github.com/your-username/wavecast2) *(update link)*
+- [WaveCast2 codebase](https://github.com/lastcastgsy/wavecast2) *(update link)*

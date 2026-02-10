@@ -73,5 +73,5 @@ Early models produced forecasts that started with a sharp discontinuity at the c
 
 ## Links
 
-- [WaveCast2 codebase](https://github.com/your-username/wavecast2) *(update link)*
+- [WaveCast2 codebase](https://github.com/lastcastgsy/wavecast2) *(update link)*
 - [NDBC data](https://www.ndbc.noaa.gov/)
